@@ -1,0 +1,85 @@
+---
+title: "SanfordSummary"
+author: "TJ Liggett"
+date: "January 25, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+##First to set up the database.
+
+```{r}
+library(tidyverse)
+setwd("C:/Users/trevo/OneDrive/Documents/COSC 219/sanford")
+Sanford_data=read.csv("Sanford_Data_Collaborative_Teaching_DataSet.csv")
+```
+
+##Now modifying the data.Set Age and BMI as numeric factors. SmokingStatus was already set as numeric
+##Created a data set with all deceased people labelled Sanford_dead 
+
+```{r}
+str(Sanford_data)
+Sanford_data$Age=as.numeric(as.character(Sanford_data$Age))
+Sanford_data$BMI=as.numeric(as.character(Sanford_data$BMI))
+Sanford_dead <- Sanford_data[which(Sanford_data$Status == "Deceased"), names(Sanford_data) %in% c("ID", "Sex","Age","BMI","Diabetes","SmokingStatus")]
+```
+
+
+##A big assumption being made is that the Age variable of the dead people in the database is the age that they died.
+##Running correlations between BMI, Age, and Smoking Status in the dead 
+
+```{r}
+cor.test (x = Sanford_dead$Age, y = Sanford_dead$SmokingStatus, method = 'pearson')
+cor.test (x = Sanford_dead$Age, y = Sanford_dead$BMI, method = 'pearson')
+cor.test (x = Sanford_dead$BMI, y = Sanford_dead$SmokingStatus, method = 'pearson')
+```
+
+##There appears to be no correlation between Age and BMI or BMI and SmokingStatus among dead members of the database
+##There does appear to be a slight correlation between SmokingStatus and Age. However, this correlation is positive, which would sugguest that smoking increases lifespan. After checking if BMI and SmokingStatus are confounding variables, this will be investigated.
+
+
+##There might be a correlation between SmokingStatus and BMI among the entire population.
+```{r}
+cor.test (x = Sanford_data$BMI, y = Sanford_data$SmokingStatus, method = 'pearson')
+```
+
+##If there is a correlation here, it is miniscule, and it would not be confounding as all variables correlate positively or show no correlation.
+
+##Jitter Plot created to show SmokingStatus versus Age among dead individuals in the SDC.
+```{r}
+ggplot(Sanford_dead, aes(Sanford_dead$SmokingStatus, Sanford_dead$Age)) + geom_jitter(color = "midnightblue", size = 0.75) + theme_bw() + labs(title = "Figure 2.0: Age at Death and Smoking Status of Dead Individuals in the SDC", x = "Smoking Status", y = "Age at Death")
+```
+
+##Created a dataset of all living individuals in the Sanford Data Collaborative. Checked if a correlation existed between Age and SmokingStatus among living individuals.
+```{r}
+Sanford_live <- Sanford_data[which(Sanford_data$Status == "Alive"), names(Sanford_data) %in% c("ID", "Sex","Age","BMI","Diabetes","SmokingStatus")]
+cor.test (x = Sanford_live$Age, y = Sanford_live$SmokingStatus, method = 'pearson')
+```
+##A correlation exists between SmokingStatus and Age among living members of the Sanford population. This might explain a correlation among deceased individuals. This will be investigated.
+
+##Created histograms displaying the age distribution among living, deceased, and all members of the SDC.
+```{r}
+ggplot(Sanford_data, aes(Sanford_data$Age)) + geom_histogram(binwidth = 1, fill = "seashell4") + theme_bw() + labs(title = "Figure 3.0: Frequency of Age of Individuals in SDC", x = "Age", y = "Frequency")
+ggplot(Sanford_dead, aes(Sanford_dead$Age)) + geom_histogram(binwidth = 1, fill = "seashell4") + theme_bw() + labs(title = "Figure 3.1: Frequency of Age of Deceased Individuals in SDC", x = "Age", y = "Frequency")
+ggplot(Sanford_live, aes(Sanford_live$Age)) + geom_histogram(binwidth = 1, fill = "seashell4") + theme_bw() + labs(title = "Figure 3.2: Frequency of Age of Living Individuals in SDC", x = "Age", y = "Frequency")
+```
+##Distributions show that the average age of individuals might have been skewing the correlations. Perhaps a different conclusion could be reached: older people tend to smoke more, as smoking rates have seen a decline in the past century. This would explain a stronger correlation among dead individuals, as the dead individuals had an older age distribution.
+
+##Rather than looking at age, year born might reveal more about the history of smoking. Year born was calculated by subtracting the age of individuals from the year 2018. While YOB might be off by up to a year in this case, this will not effect the overall correlation. Only the live population will be used, as the ages of deceased individuals are not necessarily current.
+##A Histogram of YearBorn is just a mirror image of Age in the living population.
+```{r}
+Sanford_live$YearBorn = 2018 - Sanford_live$Age
+ggplot(Sanford_live, aes(Sanford_live$YearBorn)) + geom_histogram(binwidth = 1, fill = "seashell4") + theme_bw() + labs(title = "Figure 3.3: Frequency of Year of Birth of Living Individuals in SDC", x = "Age", y = "Frequency")
+```
+##By averaging the SmokingStatus of individuals born in each year, a trend shows a decline in SmokingStatus based on year born. This might suggest that health education and awareness have made a gradual impact on smoking among SDC individuals. A line graph was created to show this correlation. A spike in Average Smoking Status in later years might reflect a decrease in the amount of available data. Also, these individuals might have lived less, and thus those who have smoked have smoked for a potentially greater portion of their lives. Whether or not this is true, it might be perceived by said individuals.
+```{r}
+SmokingHistory = aggregate(Sanford_live$SmokingStatus, by = list(Sanford_live$YearBorn), FUN = mean)
+names(SmokingHistory) <- c("YearBorn", "AverageSmokingStatus")
+ggplot(SmokingHistory, aes(SmokingHistory$YearBorn, SmokingHistory$AverageSmokingStatus)) + geom_line(color = "goldenrod4", size = 1) +theme_bw() + labs(title = "Figure 4.0: Average Smoking Status of Individuals Born from 1929 to 2000", x = "Year of Birth", y = "Average Smoking Status")
+cor.test (x = SmokingHistory$YearBorn, y = SmokingHistory$AverageSmokingStatus, method = 'pearson')
+```
+
